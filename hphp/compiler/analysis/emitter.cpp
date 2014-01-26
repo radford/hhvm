@@ -8401,6 +8401,8 @@ bool EmitterVisitor::requiresDeepInit(ExpressionPtr initExpr) const {
         return false;
       } else if (u->getOp() == '+' || u->getOp() == '-') {
         return requiresDeepInit(u->getExpression());
+      } else if (u->getOp() == T_DIR || u->getOp() == T_FILE) {
+        return false;
       }
       // fall through
     }
