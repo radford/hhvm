@@ -515,7 +515,13 @@ static bool findFileWrapper(const String& file, void* ctx) {
 
   Stream::Wrapper* w = Stream::getWrapperFromURI(file);
   if (!dynamic_cast<FileStreamWrapper*>(w)) {
-    if (w->stat(file, context->s) == 0) {
+    if (!RuntimeOption::AllowUrlInclude && !w->m_isLocal) {
+      raise_warning("include(%s): wrapper is disabled in the server configuration by allow_url_include=0", file->data());
+      return false;
+    } else if (!RuntimeOption::AllowUrlFopen && !w->m_isLocal) { // FIXME: This should go in a common stat wrapper
+      raise_warning("include(%s): wrapper is disabled in the server configuration by allow_url_fopen=0", file->data());
+      return false;
+    } else if (w->stat(file, context->s) == 0) {
       context->path = file;
       return true;
     }

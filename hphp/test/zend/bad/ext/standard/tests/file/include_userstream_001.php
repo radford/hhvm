@@ -4,11 +4,7 @@ ini_set('allow_url_include', 0);
 ini_set('allow_url_fopen', 1);
 
 class test {
-    private $data = '<?php
-ini_set('allow_url_include', 0);
-
-ini_set('allow_url_fopen', 1);
- echo "Hello World\n";?>';
+	private $data = "<?php echo \"Hello World\\n\";?>";
 	private $pos;
 
 	function stream_open($path, $mode, $options, &$opened_path)

@@ -178,7 +178,12 @@ BaseExecutionContext::BaseExecutionContext() :
   // Filesystem and Streams Configuration Options
   IniSetting::Bind(IniSetting::CORE, IniSetting::PHP_INI_SYSTEM,
                    "allow_url_fopen",
-                   ini_on_update_fail, ini_get_static_string_1);
+                   ini_on_update_bool, ini_get_bool_as_int,
+                   &RuntimeOption::AllowUrlFopen);
+  IniSetting::Bind(IniSetting::CORE, IniSetting::PHP_INI_SYSTEM,
+		   "allow_url_include",
+                   ini_on_update_bool, ini_get_bool_as_int,
+                   &RuntimeOption::AllowUrlInclude);
   IniSetting::Bind(IniSetting::CORE, IniSetting::PHP_INI_ALL,
                    "default_socket_timeout",
                    &RuntimeOption::SocketDefaultTimeout);

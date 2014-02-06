@@ -137,6 +137,10 @@ Variant File::Open(const String& filename, const String& mode,
                    int options /* = 0 */,
                    CVarRef context /* = null */) {
   Stream::Wrapper *wrapper = Stream::getWrapperFromURI(filename);
+  if (!RuntimeOption::AllowUrlFopen && !wrapper->m_isLocal) {
+      raise_warning("fopen(%s): wrapper is disabled in the server configuration by allow_url_fopen=0", filename->data());
+      return false;
+  }
   File *file =
     wrapper->open(filename, mode, options,
                   context.isNull() ? g_context->getStreamContext() : context);

@@ -18,8 +18,17 @@ class test {
 			$this->pos = strlen($this->data);
 		else
 			$this->po = 0;
-		
+
 		return true;
+	}
+
+	function stream_stat()
+	{
+		return array(7 => strlen($this->data));
+	}
+	function url_stat($path, $flags)
+	{
+		return array(7 => strlen($this->data));
 	}
 
 	function stream_read($count)

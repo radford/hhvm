@@ -64,6 +64,8 @@ std::string RuntimeOption::PidFile = "www.pid";
 std::string RuntimeOption::LogFile;
 std::string RuntimeOption::LogFileSymLink;
 int RuntimeOption::LogHeaderMangle;
+bool RuntimeOption::AllowUrlFopen = true;
+bool RuntimeOption::AllowUrlInclude = false;
 bool RuntimeOption::AlwaysEscapeLog = false;
 bool RuntimeOption::AlwaysLogUnhandledExceptions = true;
 bool RuntimeOption::InjectedStackTrace = true;

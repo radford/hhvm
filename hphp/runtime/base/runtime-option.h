@@ -68,6 +68,8 @@ public:
   static std::string LogFile;
   static std::string LogFileSymLink;
   static int LogHeaderMangle;
+  static bool AllowUrlFopen;
+  static bool AllowUrlInclude;
   static bool AlwaysEscapeLog;
   static bool AlwaysLogUnhandledExceptions;
   static bool InjectedStackTrace;
