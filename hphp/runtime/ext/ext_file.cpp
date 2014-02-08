@@ -423,11 +423,11 @@ Variant f_file_get_contents(const String& filename,
 Variant f_file_put_contents(const String& filename, CVarRef data,
                             int flags /* = 0 */,
                             CVarRef context /* = null */) {
-  Variant fvar = File::Open(filename, (flags & PHP_FILE_APPEND) ? "ab" : "wb");
-  if (!fvar.toBoolean()) {
+  Resource fvar = File::Open(filename, (flags & PHP_FILE_APPEND) ? "ab" : "wb", flags, context);
+  if (fvar.isNull()) {
     return false;
   }
-  File *f = fvar.asResRef().getTyped<File>();
+  File *f = fvar.getTyped<File>();
 
   if ((flags & LOCK_EX) && flock(f->fd(), LOCK_EX)) {
     return false;
@@ -490,6 +490,7 @@ Variant f_file_put_contents(const String& filename, CVarRef data,
     }
     break;
   }
+  f->close();
 
   if (numbytes < 0) {
     return false;

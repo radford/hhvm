@@ -133,7 +133,7 @@ bool File::IsPlainFilePath(const String& filename) {
   return filename.find("://") == String::npos;
 }
 
-Variant File::Open(const String& filename, const String& mode,
+Resource File::Open(const String& filename, const String& mode,
                    int options /* = 0 */,
                    CVarRef context /* = null */) {
   Stream::Wrapper *wrapper = Stream::getWrapperFromURI(filename);
@@ -146,7 +146,7 @@ Variant File::Open(const String& filename, const String& mode,
     file->m_streamContext = rcontext;
     return Resource(file);
   }
-  return false;
+  return null_resource;
 }
 
 ///////////////////////////////////////////////////////////////////////////////

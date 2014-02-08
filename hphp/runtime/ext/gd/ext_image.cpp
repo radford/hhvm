@@ -1734,14 +1734,14 @@ Variant f_getimagesize(const String& filename,
 
 static Variant php_open_plain_file(const String& filename, const char *mode,
                                    FILE **fpp) {
-  Variant stream = File::Open(filename, mode);
-  if (same(stream, false)) {
+  Resource stream = File::Open(filename, mode);
+  if (stream.isNull()) {
     return false;
   }
-  PlainFile *plain_file = stream.toResource().getTyped<PlainFile>(false, true);
+  PlainFile *plain_file = stream.getTyped<PlainFile>(false, true);
   FILE *fp = NULL;
   if (!plain_file || !(fp = plain_file->getStream())) {
-    f_fclose(stream.toResource());
+    f_fclose(stream);
     return false;
   }
   if (fpp) *fpp = fp;

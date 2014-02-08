@@ -55,7 +55,7 @@ public:
   // Same as TranslatePath except checks the file cache on miss
   static String TranslatePathWithFileCache(const String& filename);
   static String TranslateCommand(const String& cmd);
-  static Variant Open(const String& filename, const String& mode,
+  static Resource Open(const String& filename, const String& mode,
                       int options = 0, CVarRef context = uninit_null());
 
   static bool IsVirtualDirectory(const String& filename);

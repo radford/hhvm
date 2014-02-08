@@ -322,11 +322,11 @@ bool c_XMLWriter::t_openmemory() {
 }
 
 bool c_XMLWriter::t_openuri(const String& uri) {
-  Variant file = File::Open(uri, "wb");
-  if (same(file, false)) {
+  Resource file = File::Open(uri, "wb");
+  if (file.isNull()) {
     return false;
   }
-  m_uri = file.toResource().getTyped<File>();
+  m_uri = file.getTyped<File>();
 
   xmlOutputBufferPtr uri_output = xmlOutputBufferCreateIO(
     write_file, close_file, this, nullptr);
