@@ -115,7 +115,16 @@ static int accessSyscall(
   if (useFileCache && dynamic_cast<FileStreamWrapper*>(w)) {
     return ::access(File::TranslatePathWithFileCache(path).data(), mode);
   }
-  return w->access(path, mode);
+  if (g_context->m_statCache.access.mode == mode &&
+      same(g_context->m_statCache.access.path, path)) {
+    return g_context->m_statCache.access.ret;
+  } else {
+    int ret = w->access(path, mode);
+    g_context->m_statCache.access.path = path;
+    g_context->m_statCache.access.mode = mode;
+    g_context->m_statCache.access.ret  = ret;
+    return ret;
+  }
 }
 
 static int statSyscall(
@@ -138,7 +147,17 @@ static int statSyscall(
   if (canUseFileCache) {
     return ::stat(File::TranslatePathWithFileCache(path).data(), buf);
   }
-  return w->stat(path, buf);
+  if (same(g_context->m_statCache.stat.path, path)) {
+    *buf = g_context->m_statCache.stat.stat;
+    return 0;
+  } else {
+    int ret = w->stat(path, buf);
+    if (ret == 0) {
+      g_context->m_statCache.stat.path = path;
+      g_context->m_statCache.stat.stat = *buf;
+    }
+    return ret;
+  }
 }
 
 static int lstatSyscall(
@@ -149,7 +168,17 @@ static int lstatSyscall(
   if (useFileCache && dynamic_cast<FileStreamWrapper*>(w)) {
     return ::lstat(File::TranslatePathWithFileCache(path).data(), buf);
   }
-  return w->lstat(path, buf);
+  if (same(g_context->m_statCache.lstat.path, path)) {
+    *buf = g_context->m_statCache.lstat.stat;
+    return 0;
+  } else {
+    int ret = w->lstat(path, buf);
+    if (ret == 0) {
+      g_context->m_statCache.lstat.path = path;
+      g_context->m_statCache.lstat.stat = *buf;
+    }
+    return ret;
+  }
 }
 
 const StaticString
@@ -874,7 +903,9 @@ Variant f_lstat(const String& filename) {
 
 void f_clearstatcache(bool clear_realpath_cache /* = false */,
                       const String& filename /* = null_string */) {
-  // we are not having a cache for file stats, so do nothing here
+  g_context->m_statCache.stat.path = null_string;
+  g_context->m_statCache.lstat.path = null_string;
+  g_context->m_statCache.access.path = null_string;
 }
 
 Variant f_readlink_internal(const String& path, bool warning_compliance) {
@@ -1138,6 +1169,7 @@ bool f_rename(const String& oldname, const String& newname,
     return false;
   }
   CHECK_SYSTEM(w->rename(oldname, newname));
+  f_clearstatcache(true, oldname);
   return true;
 }
 
@@ -1154,6 +1186,7 @@ int64_t f_umask(CVarRef mask /* = null_variant */) {
 bool f_unlink(const String& filename, CVarRef context /* = null */) {
   Stream::Wrapper* w = Stream::getWrapperFromURI(filename);
   CHECK_SYSTEM(w->unlink(filename));
+  f_clearstatcache(true, filename);
   return true;
 }
 

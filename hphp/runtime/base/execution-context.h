@@ -16,6 +16,8 @@
 #ifndef incl_HPHP_EXECUTION_CONTEXT_H_
 #define incl_HPHP_EXECUTION_CONTEXT_H_
 
+#include <sys/stat.h>
+
 #include <list>
 #include <set>
 #include <unordered_map>
@@ -375,6 +377,17 @@ private:
 public:
   typedef std::set<ObjectData*> LiveObjSet;
   LiveObjSet m_liveBCObjs;
+
+  struct {
+    struct {
+      String path;
+      struct stat stat;
+    } stat, lstat;
+    struct {
+      String path;
+      int ret, mode;
+    } access;
+  } m_statCache;
 
 public:
   void requestInit();
