@@ -26,5 +26,26 @@ void Wrapper::registerAs(const std::string &scheme) {
   registerWrapper(scheme, this);
 }
 
+int access(const String& path, int mode)
+{
+  if (path.empty()) return -1;
+  Stream::Wrapper *w = Stream::getWrapperFromURI(path);
+  return w ? w->access(path, mode) : -1;
+}
+
+int stat(const String& path, struct stat* buf)
+{
+  if (path.empty()) return -1;
+  Stream::Wrapper *w = Stream::getWrapperFromURI(path);
+  return w ? w->stat(path, buf) : -1;
+}
+
+int lstat(const String& path, struct stat* buf)
+{
+  if (path.empty()) return -1;
+  Stream::Wrapper* w = Stream::getWrapperFromURI(path);
+  return w ? w->lstat(path, buf) : -1;
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 }}

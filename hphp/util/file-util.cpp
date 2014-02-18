@@ -49,14 +49,14 @@ bool FileUtil::mkdir(const std::string &path, int mode /* = 0777 */) {
   size_t pos = path.rfind('/');
   if (pos != string::npos) {
     // quick test whole path exists
-    if (access(path.substr(0, pos).c_str(), F_OK) >= 0) {
+    if (::access(path.substr(0, pos).c_str(), F_OK) >= 0) {
       return false;
     }
     for (pos = path.find('/'); pos != string::npos;
          pos = path.find('/', pos + 1)) {
       string subpath = path.substr(0, pos);
       if (subpath.empty()) continue;
-      if (access(subpath.c_str(), F_OK) < 0 &&
+      if (::access(subpath.c_str(), F_OK) < 0 &&
           ::mkdir(subpath.c_str(), mode) < 0) {
         Logger::Error("unable to mkdir %s", subpath.c_str());
         return false;

@@ -17,6 +17,7 @@
 #include "hphp/runtime/base/stream-wrapper-registry.h"
 #include "hphp/runtime/base/file.h"
 #include "hphp/runtime/base/file-stream-wrapper.h"
+#include "hphp/runtime/base/plain-stream-wrapper.h"
 #include "hphp/runtime/base/php-stream-wrapper.h"
 #include "hphp/runtime/base/http-stream-wrapper.h"
 #include "hphp/runtime/base/data-stream-wrapper.h"
@@ -185,6 +186,8 @@ Wrapper* getWrapper(const String& scheme) {
   return nullptr;
 }
 
+static PlainStreamWrapper s_plain_stream_wrapper;
+
 Wrapper* getWrapperFromURI(const String& uri) {
   const char *uri_string = uri.data();
 
@@ -200,14 +203,14 @@ Wrapper* getWrapperFromURI(const String& uri) {
 
   const char *colon = strstr(uri_string, "://");
   if (!colon) {
-    return getWrapper(s_file);
+    return &s_plain_stream_wrapper;
   }
 
   int len = colon - uri_string;
   if (Wrapper *w = getWrapper(String(uri_string, len, CopyString))) {
     return w;
   }
-  return getWrapper(s_file);
+  return nullptr;
 }
 
 static FileStreamWrapper s_file_stream_wrapper;

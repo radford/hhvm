@@ -27,42 +27,24 @@
 namespace HPHP {
 ///////////////////////////////////////////////////////////////////////////////
 
-MemFile* FileStreamWrapper::openFromCache(const String& filename,
-                                          const String& mode) {
-  if (!StaticContentCache::TheFileCache) {
-    return nullptr;
+static bool valid(const String& filename) {
+  if (filename.data()[7] == '/') { // not just file://, but file:///
+    return true;
   }
+  raise_warning("Only hostless file::// URLs are supported: %s", filename.data());
+  return false;
+}
 
-  String relative =
-    FileCache::GetRelativePath(File::TranslatePath(filename).c_str());
-  std::unique_ptr<MemFile> file(NEWOBJ(MemFile)());
-  bool ret = file->open(relative, mode);
-  if (ret) {
-    return file.release();
-  }
-  return nullptr;
+static String strip(const String& filename) {
+  assert(valid(filename));
+  return filename.substr(sizeof("file://") - 1);
 }
 
 File* FileStreamWrapper::open(const String& filename, const String& mode,
                               int options, CVarRef context) {
-  String fname =
-    !strncmp(filename.data(), "file://", sizeof("file://") - 1)
-    ? filename.substr(sizeof("file://") - 1) : filename;
-
-  if (MemFile *file = openFromCache(fname, mode)) {
-    return file;
-  }
-
-  if (options & File::USE_INCLUDE_PATH) {
-    struct stat s;
-    String resolved_fname = Eval::resolveVmInclude(fname.get(), "", &s);
-    if (!resolved_fname.isNull()) {
-        fname = resolved_fname;
-    }
-  }
-
+  if (!valid(filename)) return nullptr;
   std::unique_ptr<PlainFile> file(NEWOBJ(PlainFile)());
-  bool ret = file->open(File::TranslatePath(fname), mode);
+  bool ret = file->open(strip(filename), mode);
   if (!ret) {
     raise_warning("%s", file->getLastError().c_str());
     return nullptr;
@@ -71,8 +53,9 @@ File* FileStreamWrapper::open(const String& filename, const String& mode,
 }
 
 Directory* FileStreamWrapper::opendir(const String& path) {
+  if (!valid(path)) return nullptr;
   std::unique_ptr<PlainDirectory> dir(
-    NEWOBJ(PlainDirectory)(File::TranslatePath(path))
+    NEWOBJ(PlainDirectory)(strip(path))
   );
   if (!dir->isValid()) {
     raise_warning("%s", dir->getLastError().c_str());
@@ -81,59 +64,36 @@ Directory* FileStreamWrapper::opendir(const String& path) {
   return dir.release();
 }
 
+int FileStreamWrapper::stat(const String& path, struct stat* buf) {
+  return valid(path) ? ::stat(strip(path).data(), buf) : -1;
+}
+
+int FileStreamWrapper::lstat(const String& path, struct stat* buf) {
+  return valid(path) ? ::lstat(strip(path).data(), buf) : -1;
+}
+
+int FileStreamWrapper::unlink(const String& path) {
+  return valid(path) ? ::unlink(strip(path).data()) : -1;
+}
+
+int FileStreamWrapper::rmdir(const String& path, int options) {
+  return valid(path) ? ::rmdir(strip(path).data()) : -1;
+}
+
 int FileStreamWrapper::rename(const String& oldname, const String& newname) {
-  int ret =
+  return !valid(oldname) || !valid(newname) ? -1 :
     RuntimeOption::UseDirectCopy ?
-      FileUtil::directRename(File::TranslatePath(oldname).data(),
-                             File::TranslatePath(newname).data())
+      FileUtil::directRename(strip(oldname).data(),
+                             strip(newname).data())
                                  :
-      FileUtil::rename(File::TranslatePath(oldname).data(),
-                       File::TranslatePath(newname).data());
-  return ret;
+      FileUtil::rename(strip(oldname).data(),
+                       strip(newname).data());
 }
 
 int FileStreamWrapper::mkdir(const String& path, int mode, int options) {
   if (options & k_STREAM_MKDIR_RECURSIVE)
-    return mkdir_recursive(path, mode);
-  return ::mkdir(File::TranslatePath(path).data(), mode);
-}
-
-int FileStreamWrapper::mkdir_recursive(const String& path, int mode) {
-  String fullpath = File::TranslatePath(path);
-  if (fullpath.size() > PATH_MAX) {
-    errno = ENAMETOOLONG;
-    return -1;
-  }
-
-  // Check first if the whole path exists
-  if (access(fullpath.data(), F_OK) >= 0) {
-    errno = EEXIST;
-    return -1;
-  }
-
-  char dir[PATH_MAX+1];
-  char *p;
-  strncpy(dir, fullpath.data(), sizeof(dir));
-
-  for (p = dir + 1; *p; p++) {
-    if (*p == '/') {
-      *p = '\0';
-      if (::access(dir, F_OK) < 0) {
-        if (::mkdir(dir, mode) < 0) {
-          return -1;
-        }
-      }
-      *p = '/';
-    }
-  }
-
-  if (::access(dir, F_OK) < 0) {
-    if (::mkdir(dir, mode) < 0) {
-      return -1;
-    }
-  }
-
-  return 0;
+     return valid(path) && FileUtil::mkdir(strip(path).data(), mode) ? 0 : -1;
+  return valid(path) ? ::mkdir(strip(path).data(), mode) : -1;
 }
 
 ///////////////////////////////////////////////////////////////////////////////

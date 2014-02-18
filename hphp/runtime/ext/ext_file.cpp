@@ -107,51 +107,6 @@ static bool check_error(const char *function, int line, bool ret) {
   return ret;
 }
 
-static int accessSyscall(
-    const String& path,
-    int mode,
-    bool useFileCache = false) {
-  Stream::Wrapper* w = Stream::getWrapperFromURI(path);
-  if (useFileCache && dynamic_cast<FileStreamWrapper*>(w)) {
-    return ::access(File::TranslatePathWithFileCache(path).data(), mode);
-  }
-  return w->access(path, mode);
-}
-
-static int statSyscall(
-    const String& path,
-    struct stat* buf,
-    bool useFileCache = false,
-    bool isRelative = false) {
-  Stream::Wrapper* w = Stream::getWrapperFromURI(path);
-  auto canUseFileCache = useFileCache && dynamic_cast<FileStreamWrapper*>(w);
-  if (isRelative) {
-    std::string realpath = StatCache::realpath(path.data());
-    // realpath will return an empty string for nonexistent files
-    if (realpath.empty()) {
-      return ENOENT;
-    }
-    auto translatedPath = canUseFileCache ?
-      File::TranslatePathWithFileCache(path) : File::TranslatePath(path);
-    return ::stat(translatedPath.data(), buf);
-  }
-  if (canUseFileCache) {
-    return ::stat(File::TranslatePathWithFileCache(path).data(), buf);
-  }
-  return w->stat(path, buf);
-}
-
-static int lstatSyscall(
-    const String& path,
-    struct stat* buf,
-    bool useFileCache = false) {
-  Stream::Wrapper* w = Stream::getWrapperFromURI(path);
-  if (useFileCache && dynamic_cast<FileStreamWrapper*>(w)) {
-    return ::lstat(File::TranslatePathWithFileCache(path).data(), buf);
-  }
-  return w->lstat(path, buf);
-}
-
 const StaticString
   s_dev("dev"),
   s_ino("ino"),
@@ -645,13 +600,13 @@ Variant f_sha1_file(const String& filename, bool raw_output /* = false */) {
 
 Variant f_fileperms(const String& filename) {
   struct stat sb;
-  CHECK_SYSTEM(statSyscall(filename, &sb, true));
+  CHECK_SYSTEM(Stream::stat(filename, &sb));
   return (int64_t)sb.st_mode;
 }
 
 Variant f_fileinode(const String& filename) {
   struct stat sb;
-  CHECK_SYSTEM(statSyscall(filename, &sb));
+  CHECK_SYSTEM(Stream::stat(filename, &sb));
   return (int64_t)sb.st_ino;
 }
 
@@ -663,43 +618,43 @@ Variant f_filesize(const String& filename) {
     if (size >= 0) return size;
   }
   struct stat sb;
-  CHECK_SYSTEM(statSyscall(filename, &sb, true));
+  CHECK_SYSTEM(Stream::stat(filename, &sb));
   return (int64_t)sb.st_size;
 }
 
 Variant f_fileowner(const String& filename) {
   struct stat sb;
-  CHECK_SYSTEM(statSyscall(filename, &sb, true));
+  CHECK_SYSTEM(Stream::stat(filename, &sb));
   return (int64_t)sb.st_uid;
 }
 
 Variant f_filegroup(const String& filename) {
   struct stat sb;
-  CHECK_SYSTEM(statSyscall(filename, &sb, true));
+  CHECK_SYSTEM(Stream::stat(filename, &sb));
   return (int64_t)sb.st_gid;
 }
 
 Variant f_fileatime(const String& filename) {
   struct stat sb;
-  CHECK_SYSTEM(statSyscall(filename, &sb, true));
+  CHECK_SYSTEM(Stream::stat(filename, &sb));
   return (int64_t)sb.st_atime;
 }
 
 Variant f_filemtime(const String& filename) {
   struct stat sb;
-  CHECK_SYSTEM(statSyscall(filename, &sb, true));
+  CHECK_SYSTEM(Stream::stat(filename, &sb));
   return (int64_t)sb.st_mtime;
 }
 
 Variant f_filectime(const String& filename) {
   struct stat sb;
-  CHECK_SYSTEM(statSyscall(filename, &sb, true));
+  CHECK_SYSTEM(Stream::stat(filename, &sb));
   return (int64_t)sb.st_ctime;
 }
 
 Variant f_filetype(const String& filename) {
   struct stat sb;
-  CHECK_SYSTEM(lstatSyscall(filename, &sb));
+  CHECK_SYSTEM(Stream::lstat(filename, &sb));
 
   switch (sb.st_mode & S_IFMT) {
   case S_IFLNK:  return "link";
@@ -715,7 +670,7 @@ Variant f_filetype(const String& filename) {
 
 Variant f_linkinfo(const String& filename) {
   struct stat sb;
-  CHECK_SYSTEM(statSyscall(filename, &sb));
+  CHECK_SYSTEM(Stream::stat(filename, &sb));
   return (int64_t)sb.st_dev;
 }
 
@@ -723,7 +678,7 @@ bool f_is_writable(const String& filename) {
   if (filename.empty()) {
     return false;
   }
-  CHECK_SYSTEM(accessSyscall(filename, W_OK));
+  CHECK_SYSTEM(Stream::access(filename, W_OK));
   return true;
   /*
   int mask = S_IWOTH;
@@ -757,7 +712,7 @@ bool f_is_readable(const String& filename) {
   if (filename.empty()) {
     return false;
   }
-  CHECK_SYSTEM(accessSyscall(filename, R_OK, true));
+  CHECK_SYSTEM(Stream::access(filename, R_OK));
   return true;
   /*
   int mask = S_IROTH;
@@ -787,7 +742,7 @@ bool f_is_executable(const String& filename) {
   if (filename.empty()) {
     return false;
   }
-  CHECK_SYSTEM(accessSyscall(filename, X_OK));
+  CHECK_SYSTEM(Stream::access(filename, X_OK));
   return true;
   /*
   int mask = S_IXOTH;
@@ -815,32 +770,20 @@ bool f_is_executable(const String& filename) {
 
 bool f_is_file(const String& filename) {
   struct stat sb;
-  CHECK_SYSTEM(statSyscall(filename, &sb, true));
+  CHECK_SYSTEM(Stream::stat(filename, &sb));
   return (sb.st_mode & S_IFMT) == S_IFREG;
 }
 
 bool f_is_dir(const String& filename) {
   String cwd;
-  if (filename.empty()) {
-    return false;
-  }
-  bool isRelative = (filename.charAt(0) != '/');
-  if (isRelative) cwd = g_context->getCwd();
-  if (!isRelative || cwd == String(RuntimeOption::SourceRoot)) {
-    if (File::IsVirtualDirectory(filename)) {
-      return true;
-    }
-  }
-
   struct stat sb;
-  String path = isRelative ? cwd + String::FromChar('/') + filename : filename;
-  CHECK_SYSTEM(statSyscall(path, &sb, false, isRelative));
+  CHECK_SYSTEM(Stream::stat(filename, &sb));
   return (sb.st_mode & S_IFMT) == S_IFDIR;
 }
 
 bool f_is_link(const String& filename) {
   struct stat sb;
-  CHECK_SYSTEM(lstatSyscall(filename, &sb));
+  CHECK_SYSTEM(Stream::lstat(filename, &sb));
   return (sb.st_mode & S_IFMT) == S_IFLNK;
 }
 
@@ -853,22 +796,18 @@ bool f_is_uploaded_file(const String& filename) {
 }
 
 bool f_file_exists(const String& filename) {
-  if (filename.empty() ||
-      (accessSyscall(filename, F_OK, true)) < 0) {
-    return false;
-  }
-  return true;
+  return 0 == Stream::access(filename, F_OK);
 }
 
 Variant f_stat(const String& filename) {
   struct stat sb;
-  CHECK_SYSTEM(statSyscall(filename, &sb, true));
+  CHECK_SYSTEM(Stream::stat(filename, &sb));
   return stat_impl(&sb);
 }
 
 Variant f_lstat(const String& filename) {
   struct stat sb;
-  CHECK_SYSTEM(lstatSyscall(filename, &sb, true));
+  CHECK_SYSTEM(Stream::lstat(filename, &sb));
   return stat_impl(&sb);
 }
 
@@ -877,23 +816,17 @@ void f_clearstatcache(bool clear_realpath_cache /* = false */,
   // we are not having a cache for file stats, so do nothing here
 }
 
-Variant f_readlink_internal(const String& path, bool warning_compliance) {
+Variant f_readlink(const String& path) {
   char buff[PATH_MAX];
   int ret = readlink(File::TranslatePath(path).data(), buff, PATH_MAX-1);
   if (ret < 0) {
     Logger::Verbose("%s/%d: %s", __FUNCTION__, __LINE__,
                     folly::errnoStr(errno).c_str());
-    if (warning_compliance) {
-      raise_warning("readlink(): No such file or directory %s",path.c_str());
-    }
+    raise_warning("readlink(): No such file or directory %s",path.c_str());
     return false;
   }
   buff[ret] = '\0';
   return String(buff, ret, CopyString);
-}
-
-Variant f_readlink(const String& path) {
-  return f_readlink_internal(path, true);
 }
 
 Variant f_realpath(const String& path) {
@@ -1076,7 +1009,7 @@ bool f_touch(const String& filename, int64_t mtime /* = 0 */,
   String translated = File::TranslatePath(filename);
 
   /* create the file if it doesn't exist already */
-  if (accessSyscall(translated, F_OK)) {
+  if (Stream::access(translated, F_OK)) {
     FILE *f = fopen(translated.data(), "w");
     if (!f) {
       Logger::Verbose("%s/%d: Unable to create file %s because %s",

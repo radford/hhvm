@@ -14,70 +14,40 @@
    +----------------------------------------------------------------------+
 */
 
-#ifndef HPHP_STREAM_WRAPPER_H
-#define HPHP_STREAM_WRAPPER_H
+#ifndef HPHP_PLAIN_STREAM_WRAPPER_H
+#define HPHP_PLAIN_STREAM_WRAPPER_H
 
-#include <string>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
+
 #include "hphp/runtime/base/types.h"
 #include "hphp/runtime/base/file.h"
-
-#include <boost/noncopyable.hpp>
-
-struct stat;
+#include "hphp/runtime/base/mem-file.h"
+#include "hphp/runtime/base/stream-wrapper.h"
 
 namespace HPHP {
+///////////////////////////////////////////////////////////////////////////////
 
 class Directory;
 
-namespace Stream {
-///////////////////////////////////////////////////////////////////////////////
-
-int access(const String& path, int mode);
-int stat(const String& path, struct stat* buf);
-int lstat(const String& path, struct stat* buf);
-
-class Wrapper : boost::noncopyable {
+class PlainStreamWrapper : public Stream::Wrapper {
  public:
-  Wrapper() : m_isLocal(true) { }
-  void registerAs(const std::string &scheme);
-
+  static MemFile* openFromCache(const String& filename, const String& mode);
   virtual File* open(const String& filename, const String& mode,
-                     int options, CVarRef context) = 0;
-  virtual int access(const String& path, int mode) {
-    return -1;
-  }
-  virtual int lstat(const String& path, struct stat* buf) {
-    return -1;
-  }
-  virtual int stat(const String& path, struct stat* buf) {
-    return -1;
-  }
-  virtual int unlink(const String& path) {
-    return -1;
-  }
-  virtual int rename(const String& oldname, const String& newname) {
-    return -1;
-  }
-  virtual int mkdir(const String& path, int mode, int options) {
-    return -1;
-  }
-  virtual int rmdir(const String& path, int options) {
-    return -1;
-  }
-  virtual Directory* opendir(const String& path) {
-    return nullptr;
-  }
+                     int options, CVarRef context);
+  virtual int access(const String& path, int mode);
+  virtual int stat(const String& path, struct stat* buf);
+  virtual int lstat(const String& path, struct stat* buf);
+  virtual int unlink(const String& path);
+  virtual int rename(const String& oldname, const String& newname);
+  virtual int mkdir(const String& path, int mode, int options);
+  virtual int rmdir(const String& path, int options);
 
-  virtual ~Wrapper() {}
-
-  /**
-   * Is there a chance that open() could return a file that is local?
-   */
-  bool m_isLocal;
+  virtual Directory* opendir(const String& path);
 };
 
 ///////////////////////////////////////////////////////////////////////////////
 }
-}
 
-#endif // HPHP_STREAM_WRAPPER_REGISTRY_H
+#endif // HPHP_PLAIN_STREAM_WRAPPER_H
