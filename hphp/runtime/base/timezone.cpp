@@ -203,7 +203,17 @@ TimeZone::TimeZone() {
 }
 
 TimeZone::TimeZone(const String& name) {
-  m_tzi = GetTimeZoneInfo((char*)name.data(), GetDatabase());
+  char *tz_name = name.data();
+  timelib_time dummy_t = {};
+  int dst, not_found;
+  dummy_t.z = timelib_parse_zone(&tz_name, &dst, &dummy_t, &not_found, DATE_TIMEZONEDB, TimeZone::GetTimeZoneInfoRaw);
+  if (not_found) {
+    raise_warning("Unknown or bad timezone (%s)", name.data());
+  else if (dummy_t.zone_type == TIMELIB_ZONETYPE_ID) {
+    m_tzi = dummy_t.tz_info;
+  } else {
+    raise_warning("Unsupported timezone type (%s)", name.data());
+  }
 }
 
 TimeZone::TimeZone(timelib_tzinfo *tzi) {
