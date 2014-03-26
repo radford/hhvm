@@ -872,23 +872,17 @@ void f_clearstatcache(bool clear_realpath_cache /* = false */,
   // we are not having a cache for file stats, so do nothing here
 }
 
-Variant f_readlink_internal(const String& path, bool warning_compliance) {
+Variant f_readlink(const String& path) {
   char buff[PATH_MAX];
   int ret = readlink(File::TranslatePath(path).data(), buff, PATH_MAX-1);
   if (ret < 0) {
     Logger::Verbose("%s/%d: %s", __FUNCTION__, __LINE__,
                     folly::errnoStr(errno).c_str());
-    if (warning_compliance) {
-      raise_warning("readlink(): No such file or directory %s",path.c_str());
-    }
+    raise_warning("readlink(): No such file or directory %s",path.c_str());
     return false;
   }
   buff[ret] = '\0';
   return String(buff, ret, CopyString);
-}
-
-Variant f_readlink(const String& path) {
-  return f_readlink_internal(path, true);
 }
 
 Variant f_realpath(const String& path) {
