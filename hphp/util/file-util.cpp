@@ -49,14 +49,14 @@ bool FileUtil::mkdir(const std::string &path, int mode /* = 0777 */) {
   size_t pos = path.rfind('/');
   if (pos != string::npos) {
     // quick test whole path exists
-    if (access(path.substr(0, pos).c_str(), F_OK) >= 0) {
+    if (::access(path.substr(0, pos).c_str(), F_OK) >= 0) {
       return false;
     }
     for (pos = path.find('/'); pos != string::npos;
          pos = path.find('/', pos + 1)) {
       string subpath = path.substr(0, pos);
       if (subpath.empty()) continue;
-      if (access(subpath.c_str(), F_OK) < 0 &&
+      if (::access(subpath.c_str(), F_OK) < 0 &&
           ::mkdir(subpath.c_str(), mode) < 0) {
         Logger::Error("unable to mkdir %s", subpath.c_str());
         return false;
@@ -141,7 +141,7 @@ void FileUtil::syncdir(const std::string &dest_, const std::string &src_,
     string fdest = dest + e->d_name;
 
     // delete files/directories that are only in dest
-    if (access(fsrc.c_str(), F_OK) < 0) {
+    if (::access(fsrc.c_str(), F_OK) < 0) {
       size_t pos = fdest.rfind('.');
       if (pos != string::npos) {
         string ext = fdest.substr(pos + 1);
@@ -184,7 +184,7 @@ void FileUtil::syncdir(const std::string &dest_, const std::string &src_,
   // insert new ones
   while ((e = readdir(dsrc))) {
     string fdest = dest + e->d_name;
-    if (access(fdest.c_str(), F_OK) < 0) {
+    if (::access(fdest.c_str(), F_OK) < 0) {
       Logger::Info("sync: updating %s", fdest.c_str());
       if (keepSrc) {
         ssystem((string("cp -R ") + src + e->d_name + " " + dest).c_str());

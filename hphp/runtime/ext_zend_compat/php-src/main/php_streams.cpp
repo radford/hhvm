@@ -29,8 +29,8 @@ PHPAPI int _php_stream_cast(php_stream *stream, int castas, void **ret, int show
 }
 
 PHPAPI php_stream *_php_stream_open_wrapper_ex(char *path, const char *mode, int options, char **opened_path, php_stream_context *context STREAMS_DC TSRMLS_DC) {
-  HPHP::Stream::Wrapper* w = HPHP::Stream::getWrapperFromURI(path);
-  HPHP::File* file = w->open(path, mode, options, context);
+  Resource resource = HPHP::Stream::Open(path, mode, options, context);
+  HPHP::File* file = resource.getTyped<File>(true);
   if (!file) {
     return nullptr;
   }
@@ -38,13 +38,12 @@ PHPAPI php_stream *_php_stream_open_wrapper_ex(char *path, const char *mode, int
   php_stream *stream = HPHP::smart_new<php_stream>(file);
   stream->hphp_file->incRefCount();
 
-  if (auto urlFile = dynamic_cast<HPHP::UrlFile*>(file)) {
+  Array meta = urlFile->getWrapperMetaData();
+  if (!meta.isNull()) {
     // Why is there no ZVAL_ARRAY?
     MAKE_STD_ZVAL(stream->wrapperdata);
     Z_TYPE_P(stream->wrapperdata) = IS_ARRAY;
-    Z_ARRVAL_P(stream->wrapperdata) = HPHP::ProxyArray::Make(
-      urlFile->getWrapperMetaData().detach()
-    );
+    Z_ARRVAL_P(stream->wrapperdata) = HPHP::ProxyArray::Make(meta.detach());
   } else {
     stream->wrapperdata = nullptr;
   }

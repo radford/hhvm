@@ -375,10 +375,11 @@ file_or_stream(struct magic_set *ms, const char *inname, php_stream *stream)
 
   errno = 0;
 
+  HPHP::Resource resource;
   if (!stream && inname) {
     no_in_stream = 1;
-    auto wrapper = HPHP::Stream::getWrapperFromURI(inname);
-    stream = wrapper->open(inname, "rb", 0, HPHP::Variant());
+    resource = HPHP::Stream::Open(inname, "rb", 0, HPHP::Variant());
+    stream = resource.getTyped<File>(true);
   }
 
   if (!stream) {
@@ -406,10 +407,6 @@ file_or_stream(struct magic_set *ms, const char *inname, php_stream *stream)
   rv = 0;
 done:
   efree(buf);
-
-  if (no_in_stream && stream) {
-    stream->close();
-  }
 
   close_and_restore(ms, inname, 0, &sb);
   return rv == 0 ? file_getbuffer(ms) : NULL;

@@ -944,8 +944,8 @@ load_1(struct magic_set *ms, int action, const char *fn, int *errs,
   php_stream *stream;
 
   ms->file = fn;
-  auto wrapper = HPHP::Stream::getWrapperFromURI(fn);
-  stream = wrapper->open(fn, "rb", 0, HPHP::Variant());
+  auto resource = HPHP::Stream::Open(fn, "rb", 0, HPHP::Variant());
+  stream = resource.getTyped<File>(true);
 
   if (stream == NULL) {
     if (errno != ENOENT)
@@ -1020,7 +1020,6 @@ load_1(struct magic_set *ms, int action, const char *fn, int *errs,
   }
   if (me.mp)
     (void)addentry(ms, &me, mentry, mentrycount);
-  stream->close();
 }
 
 /*
@@ -1136,7 +1135,6 @@ apprentice_load(struct magic_set *ms, const char *fn, int action)
   char **filearr = NULL;
   struct stat st;
   struct magic_map *map;
-  HPHP::Directory *dir;
 
   ms->flags |= MAGIC_CHECK;  /* Enable checks for parsed files */
 
@@ -1162,13 +1160,12 @@ apprentice_load(struct magic_set *ms, const char *fn, int action)
   /* load directory or file */
   /* FIXME: Read file names and sort them to prevent
      non-determinism. See Debian bug #488562. */
-  auto w = HPHP::Stream::getWrapperFromURI(fn);
-  if (w->stat(fn, &st) == 0 && S_ISDIR(st.st_mode)) {
+  if (HPHP::Stream::stat(fn, &st) == 0 && S_ISDIR(st.st_mode)) {
     int mflen;
     char mfn[MAXPATHLEN];
 
-    HPHP::Stream::Wrapper* w = HPHP::Stream::getWrapperFromURI(fn);
-    dir = w->opendir(fn);
+    HPHP::Resource resource = HPHP::Stream::opendir(fn);
+    HPHP::Directory *dir = resource.getTyped<Directory>(true);
     if (!dir) {
       errs++;
       goto out;
@@ -1208,7 +1205,6 @@ apprentice_load(struct magic_set *ms, const char *fn, int action)
       tmp[tmplen] = '\0';
       filearr[files++] = tmp;
     }
-    dir->close();
     qsort(filearr, files, sizeof(*filearr), cmpstrp);
     for (i = 0; i < files; i++) {
       load_1(ms, action, filearr[i], &errs, mentry,
@@ -2606,7 +2602,6 @@ apprentice_map(struct magic_set *ms, const char *fn)
   struct magic_map *map;
   size_t i;
   php_stream *stream = NULL;
-  HPHP::Stream::Wrapper* wrapper;
   struct stat sb;
 
   if ((map = CAST(struct magic_map *, ecalloc(1, sizeof(*map)))) == NULL) {
@@ -2624,8 +2619,8 @@ apprentice_map(struct magic_set *ms, const char *fn)
   if (dbname == NULL)
     goto error;
 
-  wrapper = HPHP::Stream::getWrapperFromURI(fn);
-  stream = wrapper->open(fn, "rb", 0, HPHP::Variant());
+  HPHP::Resource resource = HPHP::Stream::open(fn, "rb", 0, HPHP::Variant());
+  stream = resource.getTyped<File>(true);
 
   if (!stream) {
     goto error;
@@ -2652,9 +2647,6 @@ apprentice_map(struct magic_set *ms, const char *fn)
   }
   map->len = 0;
 #define RET  1
-
-  stream->close();
-  stream = NULL;
 
 internal_loaded:
   ptr = (uint32_t *)(void *)map->p;
@@ -2750,7 +2742,6 @@ apprentice_compile(struct magic_set *ms, struct magic_map *map, const char *fn)
   int rv = -1;
   uint32_t i;
   php_stream *stream;
-  HPHP::Stream::Wrapper *wrapper;
 
   dbname = mkdbname(ms, fn, 0);
 
@@ -2758,8 +2749,8 @@ apprentice_compile(struct magic_set *ms, struct magic_map *map, const char *fn)
     goto out;
 
 /* wb+ == O_WRONLY|O_CREAT|O_TRUNC|O_BINARY */
-  wrapper = HPHP::Stream::getWrapperFromURI(fn);
-  stream = wrapper->open(fn, "wb+", 0, HPHP::Variant());
+  HPHP::Resource resource = HPHP::Stream::Open(fn, "wb+", 0, HPHP::Variant());
+  stream = resource.getTyped<File>(true);
 
   if (!stream) {
     file_error(ms, errno, "cannot open `%s'", dbname);
@@ -2789,10 +2780,6 @@ apprentice_compile(struct magic_set *ms, struct magic_map *map, const char *fn)
       file_error(ms, errno, "error writing `%s'", dbname);
       goto out;
     }
-  }
-
-  if (stream) {
-    stream->close();
   }
 
   rv = 0;

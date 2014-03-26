@@ -26,5 +26,54 @@ void Wrapper::registerAs(const std::string &scheme) {
   registerWrapper(scheme, this);
 }
 
+int access(const String& path, int mode)
+{
+  if (path.empty()) return -1;
+  Stream::Wrapper *w = Stream::getWrapperFromURI(path);
+  return w ? w->access(path, mode) : -1;
+}
+
+int stat(const String& path, struct stat* buf)
+{
+  if (path.empty()) return -1;
+  Stream::Wrapper *w = Stream::getWrapperFromURI(path);
+  return w ? w->stat(path, buf) : -1;
+}
+
+int lstat(const String& path, struct stat* buf)
+{
+  if (path.empty()) return -1;
+  Stream::Wrapper* w = Stream::getWrapperFromURI(path);
+  return w ? w->lstat(path, buf) : -1;
+}
+
+Resource opendir(const String& path)
+{
+  if (path.empty()) return -1;
+  Stream::Wrapper* w = Stream::getWrapperFromURI(path);
+  return w ? w->opendir(path) : nullptr;
+}
+
+int rmdir(const String& path, int options)
+{
+  if (path.empty()) return -1;
+  Stream::Wrapper* w = Stream::getWrapperFromURI(path);
+  return w ? w->rmdir(path) : -1;
+}
+
+int mkdir(const String& path, int mode, int options)
+{
+  if (path.empty()) return -1;
+  Stream::Wrapper* w = Stream::getWrapperFromURI(path);
+  return w ? w->mkdir(path, mode, options) : -1;
+}
+
+int unlink(const String& path)
+{
+  if (path.empty()) return -1;
+  Stream::Wrapper* w = Stream::getWrapperFromURI(path);
+  return w ? w->unlink(path) : -1;
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 }}

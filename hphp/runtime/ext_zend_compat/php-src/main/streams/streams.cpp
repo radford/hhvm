@@ -158,10 +158,7 @@ PHPAPI php_stream_wrapper *php_stream_locate_url_wrapper(const char *path, char 
 }
 
 PHPAPI int _php_stream_stat(php_stream *stream, php_stream_statbuf *ssb TSRMLS_DC) {
-  // kinda weird this is on the wrapper not the file
-  auto path = stream->hphp_file->getName();
-  auto w = HPHP::Stream::getWrapperFromURI(path);
-  return w->stat(path, &ssb->sb);
+  return HPHP::Stream::stat(path, &ssb->sb);
 }
 
 /* If buf == NULL, the buffer will be allocated automatically and will be of an
@@ -185,11 +182,7 @@ PHPAPI char *_php_stream_get_line(php_stream *stream, char *buf, size_t maxlen,
 
 PHPAPI php_stream *_php_stream_opendir(char *path, int options, php_stream_context *context STREAMS_DC TSRMLS_DC)
 {
-  auto wrapper = HPHP::Stream::getWrapperFromURI(path);
-  if (!wrapper) {
-    return nullptr;
-  }
-  auto dir = wrapper->opendir(path);
+  auto dir = HPHP::Stream::opendir(path);
   if (!dir) {
     return nullptr;
   }
