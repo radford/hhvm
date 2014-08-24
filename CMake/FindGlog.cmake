@@ -16,6 +16,7 @@ ENDIF ()
 
 FIND_PATH(LIBGLOG_INCLUDE_DIR glog/logging.h)
 
+FIND_LIBRARY(LIBGFLAGS_LIBRARY gflags)
 FIND_LIBRARY(LIBGLOG_LIBRARY glog)
 
 # handle the QUIETLY and REQUIRED arguments and set Libmemcached_FOUND to TRUE if
